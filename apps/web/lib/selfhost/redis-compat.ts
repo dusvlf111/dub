@@ -2,10 +2,18 @@
  * Self-hosted Redis compatibility layer.
  * Wraps ioredis to provide an API compatible with @upstash/redis.
  * Key difference: auto JSON serialize/deserialize like Upstash does.
+ *
+ * Uses eval("require") to prevent webpack from statically analyzing
+ * the ioredis import, which would fail in Edge Runtime contexts.
  */
-import Redis from "ioredis";
 
-function createIoRedisClient(): Redis {
+// Dynamic require that webpack cannot statically analyze
+// eslint-disable-next-line no-eval
+const Redis = eval("require")("ioredis");
+
+type Redis = InstanceType<typeof Redis>;
+
+function createIoRedisClient(): InstanceType<typeof Redis> {
   const url = process.env.REDIS_URL;
   if (url) {
     return new Redis(url, { maxRetriesPerRequest: 3, lazyConnect: true });
@@ -35,9 +43,9 @@ function deserialize<T>(value: string | null): T | null {
 
 class UpstashCompatPipeline {
   private commands: Array<{ method: string; args: any[] }> = [];
-  private client: Redis;
+  private client: any;
 
-  constructor(client: Redis) {
+  constructor(client: any) {
     this.client = client;
   }
 
@@ -105,9 +113,9 @@ class UpstashCompatPipeline {
  * Upstash-compatible Redis wrapper around ioredis.
  */
 export class UpstashCompatRedis {
-  private client: Redis;
+  private client: any;
 
-  constructor(client?: Redis) {
+  constructor(client?: any) {
     this.client = client || createIoRedisClient();
   }
 
@@ -237,7 +245,7 @@ export class UpstashCompatRedis {
   }
 
   // For compatibility where code passes the redis instance to rate limiter
-  get _ioredisClient(): Redis {
+  get _ioredisClient(): any {
     return this.client;
   }
 }

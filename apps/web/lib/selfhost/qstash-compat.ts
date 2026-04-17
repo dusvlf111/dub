@@ -3,7 +3,8 @@
  * Replaces Upstash QStash with direct HTTP calls.
  * QStash essentially just sends HTTP requests to URLs - we do the same thing directly.
  */
-import { v4 as uuidv4 } from "uuid";
+// Use crypto.randomUUID which is available in Node.js 19+ and Edge Runtime
+const uuidv4 = () => crypto.randomUUID();
 
 interface PublishOptions {
   url: string;

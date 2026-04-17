@@ -24,6 +24,10 @@ module.exports = {
   reactStrictMode: false,
   // Enable standalone output for Docker deployments
   ...(isSelfHosted && { output: "standalone" }),
+  // Self-hosted packages that need native Node.js (not Edge Runtime)
+  ...(isSelfHosted && {
+    serverExternalPackages: ["ioredis", "mysql2"],
+  }),
   transpilePackages: [
     "prettier",
     "shiki",

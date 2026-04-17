@@ -1,17 +1,18 @@
+import { Redis } from "@upstash/redis";
+
 const isSelfHosted = process.env.SELF_HOSTED === "true";
 
-let redis: any;
-let redisGlobal: any;
-let redisGlobalWithTimeout: any;
+let redis: Redis;
+let redisGlobal: Redis;
+let redisGlobalWithTimeout: Redis;
 
 if (isSelfHosted) {
-  const selfHosted = require("../selfhost/redis-compat");
+  // eslint-disable-next-line no-eval
+  const selfHosted = eval("require")("../selfhost/redis-compat");
   redis = selfHosted.redis;
   redisGlobal = selfHosted.redisGlobal;
   redisGlobalWithTimeout = selfHosted.redisGlobalWithTimeout;
 } else {
-  const { Redis } = require("@upstash/redis");
-
   redis = new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL || "",
     token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
