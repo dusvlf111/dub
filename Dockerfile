@@ -5,13 +5,11 @@ RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /app
 
-# ---- Dependencies ----
-FROM base AS deps
+# ---- Install ----
+FROM base AS installer
 
-# Copy workspace config
+# Copy everything needed for pnpm install
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
-
-# Copy all package.json files for workspace resolution
 COPY apps/web/package.json apps/web/package.json
 COPY packages/prisma/package.json packages/prisma/package.json
 COPY packages/email/package.json packages/email/package.json
@@ -32,29 +30,25 @@ FROM base AS builder
 
 WORKDIR /app
 
-# Copy all installed node_modules from deps
-COPY --from=deps /app/ ./
-
-# Copy full source code
+# Copy installed node_modules + full source
+COPY --from=installer /app/ ./
 COPY . .
 
-# Generate Prisma client using the project-local prisma binary (not npx)
-RUN cd packages/prisma && \
-    ./node_modules/.bin/prisma generate --schema=./schema
+# Generate Prisma client using the LOCAL prisma (not npx which grabs v7)
+RUN cd packages/prisma && ./node_modules/.bin/prisma generate --schema=./schema
 
-# Set self-hosted env for build
+# Self-hosted build env
 ENV SELF_HOSTED=true
 ENV NEXT_TELEMETRY_DISABLED=1
-# Dummy values for build-time env vars that Next.js needs
-ENV NEXTAUTH_SECRET=build-secret-placeholder
+ENV NEXTAUTH_SECRET=build-placeholder
 ENV NEXTAUTH_URL=http://localhost:3000
 ENV DATABASE_URL=mysql://root:root@localhost:3306/dub
 ENV NEXT_PUBLIC_APP_NAME=Dub
 ENV NEXT_PUBLIC_APP_DOMAIN=localhost:3000
 ENV NEXT_PUBLIC_APP_SHORT_DOMAIN=localhost:3000
 
-# Build the Next.js app (using the project-level next, not npx)
-RUN pnpm --filter=web exec next build
+# Use turbo to build web + all its workspace dependencies (ui, utils, email, etc.)
+RUN npx turbo build --filter=web
 
 # ---- Runner ----
 FROM node:20-alpine AS runner
