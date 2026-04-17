@@ -179,16 +179,25 @@ export async function recordClick({
   waitUntil(
     (async () => {
       const response = await Promise.allSettled([
-        fetchWithRetry(
-          `${process.env.TINYBIRD_API_URL}/v0/events?name=dub_click_events&wait=true`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${process.env.TINYBIRD_API_KEY}`,
-            },
-            body: JSON.stringify(clickData),
-          },
-        ).then((res) => res.json()),
+        (process.env.SELF_HOSTED === "true"
+          ? // Self-hosted: insert directly into ClickHouse
+            (async () => {
+              const { clickhouseInsert } = require("../selfhost/tinybird-compat");
+              await clickhouseInsert("dub_click_events", clickData);
+              return { successful_rows: 1 };
+            })()
+          : // SaaS: use Tinybird HTTP API
+            fetchWithRetry(
+              `${process.env.TINYBIRD_API_URL}/v0/events?name=dub_click_events&wait=true`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${process.env.TINYBIRD_API_KEY}`,
+                },
+                body: JSON.stringify(clickData),
+              },
+            ).then((res) => res.json())
+        ),
 
         // cache the recorded click for the corresponding IP address in Redis for 1 hour
         recordClickCache.set({ domain, key, identityHash, clickId }),

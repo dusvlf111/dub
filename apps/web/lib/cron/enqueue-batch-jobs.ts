@@ -1,6 +1,16 @@
 import { log } from "@dub/utils";
-import type { PublishBatchRequest } from "@upstash/qstash";
 import { qstash } from ".";
+
+// Type compatible with both @upstash/qstash and self-hosted
+type PublishBatchRequest<T = unknown> = {
+  url: string;
+  body?: T;
+  headers?: Record<string, string>;
+  delay?: number;
+  retries?: number;
+  callback?: string;
+  failureCallback?: string;
+};
 
 type EnqueueBatchJobsProps = PublishBatchRequest<unknown> & {
   queueName:

@@ -6,7 +6,13 @@ import { sendBatchEmail } from "@dub/email";
 import DomainClaimed from "@dub/email/templates/domain-claimed";
 import { prisma } from "@dub/prisma";
 import { DEFAULT_LINK_PROPS } from "@dub/utils";
-import { get } from "@vercel/edge-config";
+const edgeConfigGet = async (key: string) => {
+  if (process.env.SELF_HOSTED === "true") return [];
+  try {
+    const { get } = require("@vercel/edge-config");
+    return await get(key);
+  } catch { return []; }
+};
 import { waitUntil } from "@vercel/functions";
 import { addDomainToVercel } from "./add-domain-vercel";
 import { configureVercelNameservers } from "./configure-vercel-nameservers";
@@ -45,7 +51,7 @@ export async function claimDotLinkDomain({
     }
   }
 
-  const customDomainTerms = await get("customDomainTerms");
+  const customDomainTerms = await edgeConfigGet("customDomainTerms");
 
   if (customDomainTerms && Array.isArray(customDomainTerms)) {
     const customDomainTermsRegex = new RegExp(

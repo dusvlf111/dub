@@ -17,9 +17,13 @@ console.warn = (...args) => {
   originalConsoleWarn.apply(console, args);
 };
 
+const isSelfHosted = process.env.SELF_HOSTED === "true";
+
 /** @type {import('next').NextConfig} */
 module.exports = {
   reactStrictMode: false,
+  // Enable standalone output for Docker deployments
+  ...(isSelfHosted && { output: "standalone" }),
   transpilePackages: [
     "prettier",
     "shiki",
@@ -50,7 +54,9 @@ module.exports = {
         // mute errors for unused typeorm deps
         new webpack.IgnorePlugin({
           resourceRegExp:
-            /(^@google-cloud\/spanner|^@mongodb-js\/zstd|^aws-crt|^aws4$|^pg-native$|^mongodb-client-encryption$|^@sap\/hana-client$|^@sap\/hana-client\/extension\/Stream$|^snappy$|^react-native-sqlite-storage$|^bson-ext$|^cardinal$|^kerberos$|^hdb-pool$|^sql.js$|^sqlite3$|^better-sqlite3$|^ioredis$|^typeorm-aurora-data-api-driver$|^pg-query-stream$|^oracledb$|^mysql$|^snappy\/package\.json$|^cloudflare:sockets$)/,
+            isSelfHosted
+              ? /(^@google-cloud\/spanner|^@mongodb-js\/zstd|^aws-crt|^aws4$|^pg-native$|^mongodb-client-encryption$|^@sap\/hana-client$|^@sap\/hana-client\/extension\/Stream$|^snappy$|^react-native-sqlite-storage$|^bson-ext$|^cardinal$|^kerberos$|^hdb-pool$|^sql.js$|^sqlite3$|^better-sqlite3$|^typeorm-aurora-data-api-driver$|^pg-query-stream$|^oracledb$|^snappy\/package\.json$|^cloudflare:sockets$)/
+              : /(^@google-cloud\/spanner|^@mongodb-js\/zstd|^aws-crt|^aws4$|^pg-native$|^mongodb-client-encryption$|^@sap\/hana-client$|^@sap\/hana-client\/extension\/Stream$|^snappy$|^react-native-sqlite-storage$|^bson-ext$|^cardinal$|^kerberos$|^hdb-pool$|^sql.js$|^sqlite3$|^better-sqlite3$|^ioredis$|^typeorm-aurora-data-api-driver$|^pg-query-stream$|^oracledb$|^mysql$|^snappy\/package\.json$|^cloudflare:sockets$)/,
         }),
       );
 
@@ -99,6 +105,17 @@ module.exports = {
       {
         hostname: "media.cleanshot.cloud", // only for staging purposes
       },
+      // Self-hosted: MinIO / custom storage
+      ...(isSelfHosted
+        ? [
+            {
+              hostname: "localhost",
+            },
+            {
+              hostname: "minio",
+            },
+          ]
+        : []),
     ],
   },
   async headers() {

@@ -1,6 +1,7 @@
-import { get } from "@vercel/edge-config";
 import { prefixWorkspaceId } from "../api/workspaces/workspace-id";
 import { BetaFeatures } from "../types";
+
+const isSelfHosted = process.env.SELF_HOSTED === "true";
 
 type BetaFeaturesRecord = Record<BetaFeatures, string[]>;
 
@@ -11,6 +12,14 @@ export const getFeatureFlags = async ({
   workspaceId?: string;
   workspaceSlug?: string;
 }) => {
+  // Self-hosted: enable all features
+  if (isSelfHosted) {
+    return {
+      noDubLink: true,
+      analyticsSettingsSiteVisitTracking: true,
+    };
+  }
+
   if (workspaceId) {
     workspaceId = prefixWorkspaceId(workspaceId);
   }
@@ -21,7 +30,6 @@ export const getFeatureFlags = async ({
   };
 
   if (!process.env.NEXT_PUBLIC_IS_DUB || !process.env.EDGE_CONFIG) {
-    // return all features as true if edge config is not available
     return Object.fromEntries(
       Object.entries(workspaceFeatures).map(([key, _v]) => [key, true]),
     );
@@ -32,6 +40,7 @@ export const getFeatureFlags = async ({
   let betaFeatures: BetaFeaturesRecord | undefined = undefined;
 
   try {
+    const { get } = require("@vercel/edge-config");
     betaFeatures = await get("betaFeatures");
   } catch (e) {
     console.error(`Error getting beta features: ${e}`);

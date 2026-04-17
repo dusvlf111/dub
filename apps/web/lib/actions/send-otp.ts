@@ -5,7 +5,13 @@ import { ratelimit, redis } from "@/lib/upstash";
 import { sendEmail } from "@dub/email";
 import VerifyEmail from "@dub/email/templates/verify-email";
 import { prisma } from "@dub/prisma";
-import { get } from "@vercel/edge-config";
+const edgeConfigGet = async (key: string) => {
+  if (process.env.SELF_HOSTED === "true") return [];
+  try {
+    const { get } = require("@vercel/edge-config");
+    return await get(key);
+  } catch { return []; }
+};
 import { flattenValidationErrors } from "next-safe-action";
 import * as z from "zod/v4";
 import { generateOTP } from "../auth";
@@ -49,7 +55,7 @@ export const sendOtpAction = actionClient
     if (process.env.NEXT_PUBLIC_IS_DUB) {
       const [isDisposable, emailDomainTerms] = await Promise.all([
         redis.sismember("disposableEmailDomains", domain),
-        process.env.EDGE_CONFIG ? get("emailDomainTerms") : [],
+        process.env.EDGE_CONFIG ? edgeConfigGet("emailDomainTerms") : [],
       ]);
 
       // Only build the regex if we have at least one term; otherwise set to null

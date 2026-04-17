@@ -1,7 +1,6 @@
-import { getAll } from "@vercel/edge-config";
-
 export const isBlacklistedDomain = async (domain: string): Promise<boolean> => {
-  if (!process.env.NEXT_PUBLIC_IS_DUB || !process.env.EDGE_CONFIG) {
+  // Self-hosted or no edge config: not blacklisted
+  if (process.env.SELF_HOSTED === "true" || !process.env.NEXT_PUBLIC_IS_DUB || !process.env.EDGE_CONFIG) {
     return false;
   }
 
@@ -10,6 +9,7 @@ export const isBlacklistedDomain = async (domain: string): Promise<boolean> => {
   }
 
   try {
+    const { getAll } = require("@vercel/edge-config");
     const {
       domains: blacklistedDomains,
       terms: blacklistedTerms,
@@ -17,24 +17,16 @@ export const isBlacklistedDomain = async (domain: string): Promise<boolean> => {
     } = await getAll(["domains", "terms", "whitelistedDomains"]);
 
     if (whitelistedDomains.includes(domain)) {
-      console.log("Domain is whitelisted", domain);
       return false;
     }
 
     const blacklistedTermsRegex = new RegExp(
       blacklistedTerms
-        .map((term: string) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) // replace special characters with escape sequences
+        .map((term: string) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
         .join("|"),
     );
 
-    const isBlacklisted =
-      blacklistedDomains.includes(domain) || blacklistedTermsRegex.test(domain);
-
-    if (isBlacklisted) {
-      return true;
-    }
-
-    return false;
+    return blacklistedDomains.includes(domain) || blacklistedTermsRegex.test(domain);
   } catch (e) {
     return false;
   }

@@ -1,21 +1,39 @@
-import { Ratelimit } from "@upstash/ratelimit";
-import { redis } from "./redis";
+const isSelfHosted = process.env.SELF_HOSTED === "true";
 
-// Create a new ratelimiter, that allows 10 requests per 10 seconds by default
-export const ratelimit = (
-  requests: number = 10,
-  seconds:
+let ratelimit: (
+  requests?: number,
+  seconds?:
     | `${number} ms`
     | `${number} s`
     | `${number} m`
     | `${number} h`
-    | `${number} d` = "10 s",
-) => {
-  return new Ratelimit({
-    redis: redis,
-    limiter: Ratelimit.slidingWindow(requests, seconds),
-    analytics: true,
-    prefix: "dub",
-    timeout: 1000,
-  });
-};
+    | `${number} d`,
+) => any;
+
+if (isSelfHosted) {
+  const selfHosted = require("../selfhost/ratelimit");
+  ratelimit = selfHosted.ratelimit;
+} else {
+  const { Ratelimit } = require("@upstash/ratelimit");
+  const { redis } = require("./redis");
+
+  ratelimit = (
+    requests: number = 10,
+    seconds:
+      | `${number} ms`
+      | `${number} s`
+      | `${number} m`
+      | `${number} h`
+      | `${number} d` = "10 s",
+  ) => {
+    return new Ratelimit({
+      redis: redis,
+      limiter: Ratelimit.slidingWindow(requests, seconds),
+      analytics: true,
+      prefix: "dub",
+      timeout: 1000,
+    });
+  };
+}
+
+export { ratelimit };

@@ -1,30 +1,41 @@
-import { Redis } from "@upstash/redis";
+const isSelfHosted = process.env.SELF_HOSTED === "true";
 
-// Initiate Redis instance by connecting to REST URL
-export const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || "",
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
-});
+let redis: any;
+let redisGlobal: any;
+let redisGlobalWithTimeout: any;
 
-// This is a separate global Redis instance that we use
-// for global operations (e.g. linkCache, recordClick)
-// so that if this redis goes down, it won't impact other endpoints
-const hasGlobalRedisConfig =
-  !!process.env.UPSTASH_GLOBAL_REDIS_REST_URL &&
-  !!process.env.UPSTASH_GLOBAL_REDIS_REST_TOKEN;
+if (isSelfHosted) {
+  const selfHosted = require("../selfhost/redis-compat");
+  redis = selfHosted.redis;
+  redisGlobal = selfHosted.redisGlobal;
+  redisGlobalWithTimeout = selfHosted.redisGlobalWithTimeout;
+} else {
+  const { Redis } = require("@upstash/redis");
 
-const redisConfig = {
-  url: hasGlobalRedisConfig
-    ? process.env.UPSTASH_GLOBAL_REDIS_REST_URL
-    : process.env.UPSTASH_REDIS_REST_URL || "",
-  token: hasGlobalRedisConfig
-    ? process.env.UPSTASH_GLOBAL_REDIS_REST_TOKEN
-    : process.env.UPSTASH_REDIS_REST_TOKEN || "",
-};
+  redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL || "",
+    token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
+  });
 
-export const redisGlobal = new Redis(redisConfig);
+  const hasGlobalRedisConfig =
+    !!process.env.UPSTASH_GLOBAL_REDIS_REST_URL &&
+    !!process.env.UPSTASH_GLOBAL_REDIS_REST_TOKEN;
 
-export const redisGlobalWithTimeout = new Redis({
-  ...redisConfig,
-  signal: () => AbortSignal.timeout(1500),
-});
+  const redisConfig = {
+    url: hasGlobalRedisConfig
+      ? process.env.UPSTASH_GLOBAL_REDIS_REST_URL
+      : process.env.UPSTASH_REDIS_REST_URL || "",
+    token: hasGlobalRedisConfig
+      ? process.env.UPSTASH_GLOBAL_REDIS_REST_TOKEN
+      : process.env.UPSTASH_REDIS_REST_TOKEN || "",
+  };
+
+  redisGlobal = new Redis(redisConfig);
+
+  redisGlobalWithTimeout = new Redis({
+    ...redisConfig,
+    signal: () => AbortSignal.timeout(1500),
+  });
+}
+
+export { redis, redisGlobal, redisGlobalWithTimeout };

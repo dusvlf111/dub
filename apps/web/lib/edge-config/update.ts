@@ -1,4 +1,4 @@
-import { get } from "@vercel/edge-config";
+const isSelfHosted = process.env.SELF_HOSTED === "true";
 
 export const updateConfig = async ({
   key,
@@ -17,10 +17,17 @@ export const updateConfig = async ({
     | "partnersPortal";
   value: string;
 }) => {
+  // Self-hosted: use Redis-based edge config
+  if (isSelfHosted) {
+    const { updateConfig: selfHostedUpdate } = require("../selfhost/edge-config");
+    return selfHostedUpdate({ key, value });
+  }
+
   if (!process.env.EDGE_CONFIG_ID) {
     return;
   }
 
+  const { get } = require("@vercel/edge-config");
   const existingData = (await get(key)) as string[];
   const newData = Array.from(new Set([...existingData, value]));
 

@@ -1,20 +1,30 @@
 import { log } from "@dub/utils";
-import { Receiver } from "@upstash/qstash";
 import { DubApiError } from "../api/errors";
 
-// we're using Upstash's Receiver to verify the request signature
-const receiver = new Receiver({
-  currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY || "",
-  nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY || "",
-});
+const isSelfHosted = process.env.SELF_HOSTED === "true";
+
+let receiver: any;
+
+if (!isSelfHosted) {
+  const { Receiver } = require("@upstash/qstash");
+  receiver = new Receiver({
+    currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY || "",
+    nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY || "",
+  });
+}
 
 export const verifyQstashSignature = async ({
   req,
   rawBody,
 }: {
   req: Request;
-  rawBody: string; // Make sure to pass the raw body not the parsed JSON
+  rawBody: string;
 }) => {
+  // Self-hosted: skip signature verification (internal network)
+  if (isSelfHosted) {
+    return;
+  }
+
   // skip verification in local development
   if (process.env.VERCEL !== "1") {
     return;

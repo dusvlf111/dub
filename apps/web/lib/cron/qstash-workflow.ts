@@ -1,9 +1,18 @@
 import { APP_DOMAIN_WITH_NGROK, log } from "@dub/utils";
-import { Client } from "@upstash/workflow";
 
-const client = new Client({
-  token: process.env.QSTASH_TOKEN || "",
-});
+const isSelfHosted = process.env.SELF_HOSTED === "true";
+
+let client: any;
+
+if (isSelfHosted) {
+  const { WorkflowClient } = require("../selfhost/qstash-compat");
+  client = new WorkflowClient();
+} else {
+  const { Client } = require("@upstash/workflow");
+  client = new Client({
+    token: process.env.QSTASH_TOKEN || "",
+  });
+}
 
 const WORKFLOW_RETRIES = 3;
 const WORKFLOW_PARALLELISM = 20;
