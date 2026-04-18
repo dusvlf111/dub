@@ -1,4 +1,10 @@
-version: "3.8"
+# NOTE: To see streaming build logs in Coolify, set these env vars in the
+# Coolify service's "Build-time Environment Variables" (or server env):
+#   DOCKER_BUILDKIT=1
+#   BUILDKIT_PROGRESS=plain
+#   COMPOSE_DOCKER_CLI_BUILD=1
+# Without BUILDKIT_PROGRESS=plain, BuildKit collapses log output and Coolify
+# only shows a spinner instead of the line-by-line ">>> [install] ..." markers.
 
 services:
   # ---- MySQL 8.0 ----
@@ -106,6 +112,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # Raise build memory ceiling (Coolify/small VPS default can OOM here)
+      shm_size: "1gb"
     restart: always
     ports:
       - "3000:3000"

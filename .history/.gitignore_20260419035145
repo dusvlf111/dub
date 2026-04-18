@@ -53,5 +53,5 @@ test-results/
 blob-report/
 
 .remember
-.hsitory/
+.hsitory
 build.log

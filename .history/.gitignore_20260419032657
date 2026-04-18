@@ -51,7 +51,3 @@ playwright-report/
 **/playwright/.auth/
 test-results/
 blob-report/
-
-.remember
-.hsitory/
-build.log
