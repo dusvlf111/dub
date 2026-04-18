@@ -301,7 +301,7 @@ export async function checkoutSessionCompleted(
         ...leadEventData,
         workspace_id: leadEventData.workspace_id || customer.projectId, // in case for some reason the lead event doesn't have workspace_id
       };
-      linkId = leadEvent.link_id;
+      linkId = leadEvent!.link_id;
     }
   } else {
     return {
@@ -390,7 +390,7 @@ export async function checkoutSessionCompleted(
 
   const saleData = {
     ...leadEvent,
-    workspace_id: leadEvent.workspace_id || customer.projectId, // in case for some reason the lead event doesn't have workspace_id
+    workspace_id: leadEvent?.workspace_id || customer.projectId, // in case for some reason the lead event doesn't have workspace_id
     event_id: nanoid(16),
     // if the charge is a one-time payment, we set the event name to "Purchase"
     event_name:

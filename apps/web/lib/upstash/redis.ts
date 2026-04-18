@@ -7,8 +7,7 @@ let redisGlobal: Redis;
 let redisGlobalWithTimeout: Redis;
 
 if (isSelfHosted) {
-  // eslint-disable-next-line no-eval
-  const selfHosted = eval("require")("../selfhost/redis-compat");
+  const selfHosted = require("../selfhost/redis-compat");
   redis = selfHosted.redis;
   redisGlobal = selfHosted.redisGlobal;
   redisGlobalWithTimeout = selfHosted.redisGlobalWithTimeout;

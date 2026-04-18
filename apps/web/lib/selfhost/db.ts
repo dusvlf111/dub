@@ -7,9 +7,8 @@
  * into Edge Runtime contexts where it cannot run.
  */
 
-// Dynamic require that webpack cannot statically analyze
-// eslint-disable-next-line no-eval
-const mysql = eval("require")("mysql2/promise");
+// mysql2 is marked as serverExternalPackages in next.config.js
+const mysql = require("mysql2/promise");
 
 let pool: any = null;
 

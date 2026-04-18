@@ -7,11 +7,9 @@
  * the ioredis import, which would fail in Edge Runtime contexts.
  */
 
-// Dynamic require that webpack cannot statically analyze
-// eslint-disable-next-line no-eval
-const Redis = eval("require")("ioredis");
-
-type Redis = InstanceType<typeof Redis>;
+// ioredis is marked as serverExternalPackages in next.config.js
+// so webpack will not bundle it - it stays as a runtime require
+const Redis = require("ioredis");
 
 function createIoRedisClient(): InstanceType<typeof Redis> {
   const url = process.env.REDIS_URL;

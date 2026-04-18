@@ -165,7 +165,29 @@ class SelfHostedWorkflowClient {
   }
 }
 
-export const qstash = new SelfHostedQStashClient();
+class SelfHostedQueue {
+  private queueName: string;
+  private client: SelfHostedQStashClient;
+
+  constructor(client: SelfHostedQStashClient, opts: { queueName: string }) {
+    this.queueName = opts.queueName;
+    this.client = client;
+  }
+
+  async enqueueJSON(opts: PublishOptions): Promise<PublishResult> {
+    return this.client.publishJSON(opts);
+  }
+}
+
+const qstashInstance = new SelfHostedQStashClient();
+
+// Add queue method to match @upstash/qstash Client API
+const qstashWithQueue = Object.assign(qstashInstance, {
+  queue: (opts: { queueName: string }) =>
+    new SelfHostedQueue(qstashInstance, opts),
+});
+
+export const qstash = qstashWithQueue;
 export const Receiver = SelfHostedReceiver;
 export const WorkflowClient = SelfHostedWorkflowClient;
 export const CRON_BATCH_SIZE = 100;

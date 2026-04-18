@@ -46,6 +46,11 @@ ENV DATABASE_URL=mysql://root:root@localhost:3306/dub
 ENV NEXT_PUBLIC_APP_NAME=Dub
 ENV NEXT_PUBLIC_APP_DOMAIN=localhost:3000
 ENV NEXT_PUBLIC_APP_SHORT_DOMAIN=localhost:3000
+# Dummy values for third-party SDKs that initialize at module level
+ENV PLAIN_API_KEY=build-placeholder
+ENV VERIFF_API_KEY=build-placeholder
+ENV AXIOM_TOKEN=build-placeholder
+ENV AXIOM_DATASET=build-placeholder
 
 # Use turbo to build web + all its workspace dependencies (ui, utils, email, etc.)
 RUN npx turbo build --filter=web
