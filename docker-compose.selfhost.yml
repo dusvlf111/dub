@@ -5,6 +5,13 @@
 #   COMPOSE_DOCKER_CLI_BUILD=1
 # Without BUILDKIT_PROGRESS=plain, BuildKit collapses log output and Coolify
 # only shows a spinner instead of the line-by-line ">>> [install] ..." markers.
+#
+# Host ports intentionally omitted for internal services. Coolify already runs
+# its own MinIO/DB instances on shared hosts, so binding 3306/6379/9000 would
+# conflict. Services still reach each other over the internal docker network
+# by service name (mysql:3306, redis:6379, minio:9000). If you need external
+# admin access (MinIO console, MailHog UI, etc.), add a `ports:` section back
+# on a free host port OR configure a Coolify subdomain → internal service.
 
 services:
   # ---- MySQL 8.0 ----
@@ -20,8 +27,6 @@ services:
         "--max_connections=1000",
         "--default-authentication-plugin=mysql_native_password",
       ]
-    ports:
-      - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
@@ -35,8 +40,6 @@ services:
     image: redis:7-alpine
     restart: always
     command: redis-server --requirepass ${REDIS_PASSWORD:-dubredis}
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -53,9 +56,6 @@ services:
       CLICKHOUSE_DB: dub
       CLICKHOUSE_USER: default
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-dubclickhouse}
-    ports:
-      - "8123:8123"
-      - "9200:9000"
     volumes:
       - clickhouse-data:/var/lib/clickhouse
       - ./selfhost/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -73,9 +73,6 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     command: server /data --console-address ":9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
     volumes:
       - minio-data:/data
     healthcheck:
@@ -103,9 +100,6 @@ services:
   mailhog:
     image: mailhog/mailhog:latest
     restart: always
-    ports:
-      - "1025:1025"
-      - "8025:8025"
 
   # ---- Dub Web App ----
   web:
@@ -115,8 +109,10 @@ services:
       # Raise build memory ceiling (Coolify/small VPS default can OOM here)
       shm_size: "1gb"
     restart: always
-    ports:
-      - "3000:3000"
+    # Coolify routes traffic to container port 3000 via its own proxy.
+    # No host port binding -> no conflicts with other Coolify apps.
+    expose:
+      - "3000"
     env_file:
       - .env.selfhost
     environment:
@@ -130,7 +126,7 @@ services:
       - STORAGE_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - STORAGE_PUBLIC_BUCKET=dub-public
       - STORAGE_PRIVATE_BUCKET=dub-private
-      - STORAGE_BASE_URL=${STORAGE_BASE_URL:-http://localhost:9000/dub-public}
+      - STORAGE_BASE_URL=${STORAGE_BASE_URL:-http://minio:9000/dub-public}
       - SMTP_HOST=mailhog
       - SMTP_PORT=1025
     depends_on:
