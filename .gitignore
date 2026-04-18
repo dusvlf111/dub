@@ -52,6 +52,6 @@ playwright-report/
 test-results/
 blob-report/
 
-.remember
-.hsitory/
+.remember/
+.history/
 build.log
