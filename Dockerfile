@@ -55,6 +55,18 @@ COPY . .
 RUN echo ">>> [build] prisma generate"
 RUN cd packages/prisma && ./node_modules/.bin/prisma generate --schema=./schema
 
+# Self-hosted: Edge Runtime can't load ioredis / mysql2 (Node-only native modules).
+# Our self-hosted Redis/MySQL compat layers require Node.js, so downgrade every
+# Edge route to the Node.js runtime before building.
+RUN echo ">>> [build] rewriting edge routes -> nodejs (self-hosted only)" && \
+    find apps/web/app -type f \( -name "*.ts" -o -name "*.tsx" \) \
+      -exec grep -lE 'runtime[[:space:]]*=[[:space:]]*["'\'']edge["'\'']' {} + \
+    | tee /tmp/edge-routes.txt && \
+    if [ -s /tmp/edge-routes.txt ]; then \
+      xargs sed -i -E 's/(runtime[[:space:]]*=[[:space:]]*)["'\'']edge["'\'']/\1"nodejs"/g' < /tmp/edge-routes.txt; \
+    fi && \
+    echo ">>> [build] edge->nodejs rewrite done"
+
 # Build-time env (placeholders so module-level SDK init does not crash)
 ENV SELF_HOSTED=true
 ENV NEXTAUTH_SECRET=build-placeholder
@@ -67,17 +79,24 @@ ENV PLAIN_API_KEY=build-placeholder
 ENV VERIFF_API_KEY=build-placeholder
 ENV AXIOM_TOKEN=build-placeholder
 ENV AXIOM_DATASET=build-placeholder
+# Stripe SDK v18 validates the key format — use a plausible-looking dummy
+ENV STRIPE_SECRET_KEY=sk_test_build_placeholder_00000000000000000000
+ENV STRIPE_APP_SECRET_KEY=sk_test_build_placeholder_00000000000000000000
+# Dub SDK reads this on construction
+ENV DUB_API_KEY=dub_build_placeholder
 
 # Prevent OOM during Next.js build (this is the #1 cause of Coolify build crashes)
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
-# Turbo cache mount: incremental rebuilds reuse .turbo across CI runs
-# Stream logs so Coolify shows progress line-by-line
-RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo \
-    --mount=type=cache,id=next-cache,target=/app/apps/web/.next/cache \
-    echo ">>> [build] turbo build --filter=web (streaming)" && \
+# NOTE: no cache mounts here on purpose.
+# A cache mount at /app/apps/web/.next/cache "shadows" the .next/ parent,
+# which can cause sibling outputs like .next/static to be missing from the
+# final image layer (BuildKit COPY then fails with "not found").
+# pnpm store caching in the installer stage already gives us the big win.
+RUN echo ">>> [build] turbo build --filter=web (streaming)" && \
     pnpm turbo build --filter=web --log-order=stream --output-logs=new-only && \
-    echo ">>> [build] done"
+    echo ">>> [build] done" && \
+    ls -la apps/web/.next/standalone apps/web/.next/static 2>&1 | head -30
 
 # ---- Runner ----
 FROM node:20-alpine AS runner
