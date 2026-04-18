@@ -116,6 +116,19 @@ COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public
 
+# Prisma schema for runtime `prisma db push`. Install prisma CLI globally so
+# we don't have to untangle pnpm's symlinked store at runtime.
+COPY --from=builder /app/packages/prisma/schema ./packages/prisma/schema
+RUN npm install -g prisma@6.19.1 --no-audit --no-fund && \
+    prisma --version
+
+# Self-hosted entrypoint: waits for MySQL, runs `prisma db push`, starts Next.
+COPY --from=builder /app/selfhost/entrypoint.sh /usr/local/bin/dub-entrypoint.sh
+RUN chmod +x /usr/local/bin/dub-entrypoint.sh
+
+# Ensure nextjs user can read the schema dir we just copied as root.
+RUN chown -R nextjs:nodejs /app/packages /app/apps
+
 USER nextjs
 
 EXPOSE 3000
@@ -123,4 +136,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "apps/web/server.js"]
+ENTRYPOINT ["/usr/local/bin/dub-entrypoint.sh"]
