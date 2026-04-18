@@ -116,6 +116,10 @@ services:
     env_file:
       - .env.selfhost
     environment:
+      # Coolify magic variable: binds the app's domain to THIS service on
+      # port 3000. Without it, Coolify's Traefik auto-detected MailHog/MinIO
+      # EXPOSE ports and routed the main domain to MailHog:1025 by mistake.
+      - SERVICE_FQDN_WEB_3000=${SERVICE_FQDN_WEB:-}
       - SELF_HOSTED=true
       - DATABASE_URL=mysql://root:${MYSQL_ROOT_PASSWORD:-dubpassword}@mysql:3306/dub
       - REDIS_URL=redis://:${REDIS_PASSWORD:-dubredis}@redis:6379
