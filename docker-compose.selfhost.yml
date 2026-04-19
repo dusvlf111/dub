@@ -77,6 +77,10 @@ services:
     # ClickHouse 24.x auto-detects cgroup memory limits and tunes
     # max_server_memory_usage accordingly (≈90% of container memory).
     # Without a limit, it allocates based on host RAM (32GB) and OOMs the box.
+    # SYS_NICE suppresses the "get_mempolicy: Operation not permitted" warnings
+    # that flood logs when ClickHouse probes NUMA memory policy in containers.
+    cap_add:
+      - SYS_NICE
     ulimits:
       nofile:
         soft: 262144
@@ -119,6 +123,7 @@ services:
   # ---- MinIO bucket init ----
   minio-init:
     image: minio/mc:latest
+    restart: "no"
     depends_on:
       minio:
         condition: service_healthy
