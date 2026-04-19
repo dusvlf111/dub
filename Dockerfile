@@ -88,13 +88,12 @@ ENV DUB_API_KEY=dub_build_placeholder
 # Prevent OOM during Next.js build (this is the #1 cause of Coolify build crashes)
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
-# NOTE: no cache mounts here on purpose.
-# A cache mount at /app/apps/web/.next/cache "shadows" the .next/ parent,
-# which can cause sibling outputs like .next/static to be missing from the
-# final image layer (BuildKit COPY then fails with "not found").
-# pnpm store caching in the installer stage already gives us the big win.
-RUN echo ">>> [build] turbo build --filter=web (streaming)" && \
-    pnpm turbo build --filter=web --log-order=stream --output-logs=new-only && \
+# Cap turbo parallelism so we don't fan out to N CPU cores.
+# On a 64-thread host this was launching way too many node workers and
+# pegging all RAM/CPU, which knocked the server's network stack offline.
+# 2 parallel tasks × 4GB heap ≈ 8GB peak — safe on small/medium VPS.
+RUN echo ">>> [build] turbo build --filter=web (streaming, concurrency=2)" && \
+    pnpm turbo build --filter=web --concurrency=2 --log-order=stream --output-logs=new-only && \
     echo ">>> [build] done" && \
     ls -la apps/web/.next/standalone apps/web/.next/static 2>&1 | head -30
 
